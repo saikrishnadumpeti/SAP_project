@@ -1,0 +1,146 @@
+REPORT ZUPLOAD03
+       NO STANDARD PAGE HEADING LINE-SIZE 255.
+
+TYPES : BEGIN OF TY_MATERIAL,
+          MATNR TYPE MATNR,
+          MBRSH TYPE MBRSH,
+          MTART TYPE MTART,
+          MAKTX TYPE MAKTX,
+          MEINS TYPE MEINS,
+        END OF TY_MATERIAL.
+
+DATA : LT_MATERIAL TYPE TABLE OF TY_MATERIAL,
+       LS_MATERIAL TYPE TY_MATERIAL.
+
+DATA : LT_BDCDATA TYPE TABLE OF BDCDATA,
+       LS_BDCDATA TYPE BDCDATA.
+
+DATA : LT_MESSAGE TYPE TABLE OF BDCMSGCOLL.
+
+PARAMETERS : P_FILE TYPE LOCALFILE.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+
+  CALL FUNCTION 'F4_FILENAME'
+    EXPORTING
+      PROGRAM_NAME  = SYST-CPROG
+      DYNPRO_NUMBER = SYST-DYNNR
+      FIELD_NAME    = ' '
+    IMPORTING
+      FILE_NAME     = P_FILE.
+
+START-OF-SELECTION.
+
+  DATA : LV_FILE TYPE STRING.
+  LV_FILE = P_FILE.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      FILENAME                = LV_FILE
+*     FILETYPE                = 'ASC'
+      HAS_FIELD_SEPARATOR     = 'X'
+*     HEADER_LENGTH           = 0
+*     READ_BY_LINE            = 'X'
+*     DAT_MODE                = ' '
+*     CODEPAGE                = ' '
+*     IGNORE_CERR             = ABAP_TRUE
+*     REPLACEMENT             = '#'
+*     CHECK_BOM               = ' '
+*     VIRUS_SCAN_PROFILE      =
+*     NO_AUTH_CHECK           = ' '
+* IMPORTING
+*     FILELENGTH              =
+*     HEADER                  =
+    TABLES
+      DATA_TAB                = LT_MATERIAL
+* CHANGING
+*     ISSCANPERFORMED         = ' '
+    EXCEPTIONS
+      FILE_OPEN_ERROR         = 1
+      FILE_READ_ERROR         = 2
+      NO_BATCH                = 3
+      GUI_REFUSE_FILETRANSFER = 4
+      INVALID_TYPE            = 5
+      NO_AUTHORITY            = 6
+      UNKNOWN_ERROR           = 7
+      BAD_DATA_FORMAT         = 8
+      HEADER_NOT_ALLOWED      = 9
+      SEPARATOR_NOT_ALLOWED   = 10
+      HEADER_TOO_LONG         = 11
+      UNKNOWN_DP_ERROR        = 12
+      ACCESS_DENIED           = 13
+      DP_OUT_OF_MEMORY        = 14
+      DISK_FULL               = 15
+      DP_TIMEOUT              = 16
+      OTHERS                  = 17.
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+*include bdcrecx1.
+
+*start-of-selection.
+
+  LOOP AT LT_MATERIAL INTO LS_MATERIAL.
+
+*perform open_group.
+
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM' '0060'.
+    PERFORM BDC_FIELD       USING 'BDC_CURSOR'
+                                  'RMMG1-MTART'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                  '=ENTR'.
+    PERFORM BDC_FIELD       USING 'RMMG1-MATNR'
+                                   LS_MATERIAL-MATNR.
+    PERFORM BDC_FIELD       USING 'RMMG1-MBRSH'
+                                   LS_MATERIAL-MBRSH.
+    PERFORM BDC_FIELD       USING 'RMMG1-MTART'
+                                   LS_MATERIAL-MTART.
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM' '0070'.
+    PERFORM BDC_FIELD       USING 'BDC_CURSOR'
+                                  'MSICHTAUSW-DYTXT(01)'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                  '=ENTR'.
+    PERFORM BDC_FIELD       USING 'MSICHTAUSW-KZSEL(01)'
+                                  'X'.
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM' '4004'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                  '=BU'.
+    PERFORM BDC_FIELD       USING 'MAKT-MAKTX'
+                                  LS_MATERIAL-MAKTX.
+    PERFORM BDC_FIELD       USING 'BDC_CURSOR'
+                                  'MARA-MEINS'.
+    PERFORM BDC_FIELD       USING 'MARA-MEINS'
+                                  LS_MATERIAL-MEINS.
+*perform bdc_transaction using 'MM01'.
+
+*perform close_group.
+
+    CALL TRANSACTION 'MM01' USING LT_BDCDATA MODE 'N' UPDATE 'S' MESSAGES INTO LT_MESSAGE.
+
+    CLEAR LT_BDCDATA.
+
+  ENDLOOP.
+
+
+CL_DEMO_OUTPUT=>DISPLAY( LT_MESSAGE ).
+
+FORM BDC_DYNPRO USING PROGRAM DYNPRO.
+  CLEAR LS_BDCDATA.
+  LS_BDCDATA-PROGRAM  = PROGRAM.
+  LS_BDCDATA-DYNPRO   = DYNPRO.
+  LS_BDCDATA-DYNBEGIN = 'X'.
+  APPEND LS_BDCDATA TO LT_BDCDATA.
+ENDFORM.
+
+----------------------------------------------------------------------
+*        Insert field                                                  *
+----------------------------------------------------------------------
+FORM BDC_FIELD USING FNAM FVAL.
+*  IF FVAL <> NODATA.
+  CLEAR LS_BDCDATA.
+  LS_BDCDATA-FNAM = FNAM.
+  LS_BDCDATA-FVAL = FVAL.
+  APPEND LS_BDCDATA TO LT_BDCDATA.
+*  ENDIF.
+ENDFORM.
