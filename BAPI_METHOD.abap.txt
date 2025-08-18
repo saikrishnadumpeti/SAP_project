@@ -1,0 +1,150 @@
+REPORT ZBAPI01.
+
+
+TYPES : BEGIN OF TY_MATERIAL,
+          MATNR TYPE MATNR,
+          MBRSH TYPE MBRSH,
+          MTART TYPE MTART,
+          MAKTX TYPE MAKTX,
+          MEINS TYPE MEINS,
+        END OF TY_MATERIAL.
+
+DATA : LT_MATERIAL TYPE TABLE OF TY_MATERIAL,
+       LS_MATERIAL TYPE TY_MATERIAL.
+
+DATA:LS_HEADDATA TYPE BAPIMATHEAD.
+DATA:LS_CLIENTDATA TYPE BAPI_MARA.
+DATA:LS_CLIENTDATAX TYPE BAPI_MARAX.
+
+DATA : LT_MATERIALDESCRIPTION TYPE TABLE OF BAPI_MAKT,
+       LS_MATERIALDESCRIPTION TYPE BAPI_MAKT.
+
+DATA : LT_RETURN TYPE TABLE OF BAPIRET2,
+       LS_RETURN TYPE BAPIRET2.
+
+PARAMETERS P_FILE TYPE LOCALFILE.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+
+CALL FUNCTION 'F4_FILENAME'
+ EXPORTING
+   PROGRAM_NAME        = SYST-CPROG
+   DYNPRO_NUMBER       = SYST-DYNNR
+   FIELD_NAME          = ' '
+ IMPORTING
+   FILE_NAME           = P_FILE.
+
+
+DATA : LV_FILE TYPE STRING.
+LV_FILE = P_FILE.
+
+CALL FUNCTION 'GUI_UPLOAD'
+  EXPORTING
+    FILENAME                      = LV_FILE
+*   FILETYPE                      = 'ASC'
+   HAS_FIELD_SEPARATOR           = 'X'
+*   HEADER_LENGTH                 = 0
+*   READ_BY_LINE                  = 'X'
+*   DAT_MODE                      = ' '
+*   CODEPAGE                      = ' '
+*   IGNORE_CERR                   = ABAP_TRUE
+*   REPLACEMENT                   = '#'
+*   CHECK_BOM                     = ' '
+*   VIRUS_SCAN_PROFILE            =
+*   NO_AUTH_CHECK                 = ' '
+* IMPORTING
+*   FILELENGTH                    =
+*   HEADER                        =
+  TABLES
+    DATA_TAB                      = LT_MATERIAL
+* CHANGING
+*   ISSCANPERFORMED               = ' '
+ EXCEPTIONS
+   FILE_OPEN_ERROR               = 1
+   FILE_READ_ERROR               = 2
+   NO_BATCH                      = 3
+   GUI_REFUSE_FILETRANSFER       = 4
+   INVALID_TYPE                  = 5
+   NO_AUTHORITY                  = 6
+   UNKNOWN_ERROR                 = 7
+   BAD_DATA_FORMAT               = 8
+   HEADER_NOT_ALLOWED            = 9
+   SEPARATOR_NOT_ALLOWED         = 10
+   HEADER_TOO_LONG               = 11
+   UNKNOWN_DP_ERROR              = 12
+   ACCESS_DENIED                 = 13
+   DP_OUT_OF_MEMORY              = 14
+   DISK_FULL                     = 15
+   DP_TIMEOUT                    = 16
+   OTHERS                        = 17
+          .
+IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+ENDIF.
+
+*BREAK-POINT.
+
+
+LOOP AT LT_MATERIAL INTO LS_MATERIAL.
+
+LS_HEADDATA-MATERIAL = LS_MATERIAL-MATNR.
+LS_HEADDATA-IND_SECTOR = LS_MATERIAL-MBRSH.
+LS_HEADDATA-MATL_TYPE = LS_MATERIAL-MTART.
+LS_HEADDATA-BASIC_VIEW = 'X'.
+
+LS_CLIENTDATA-BASE_UOM = LS_MATERIAL-MEINS.
+LS_CLIENTDATAX-BASE_UOM = 'X'.
+
+LS_MATERIALDESCRIPTION-LANGU = SY-LANGU.
+LS_MATERIALDESCRIPTION-MATL_DESC = LS_MATERIAL-MAKTX.
+APPEND LS_MATERIALDESCRIPTION TO LT_MATERIALDESCRIPTION.
+CLEAR LS_MATERIALDESCRIPTION.
+
+CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+  EXPORTING
+    HEADDATA                   = LS_HEADDATA
+   CLIENTDATA                 = LS_CLIENTDATA
+   CLIENTDATAX                = LS_CLIENTDATAX
+*   PLANTDATA                  =
+*   PLANTDATAX                 =
+*   FORECASTPARAMETERS         =
+*   FORECASTPARAMETERSX        =
+*   PLANNINGDATA               =
+*   PLANNINGDATAX              =
+*   STORAGELOCATIONDATA        =
+*   STORAGELOCATIONDATAX       =
+*   VALUATIONDATA              =
+*   VALUATIONDATAX             =
+*   WAREHOUSENUMBERDATA        =
+*   WAREHOUSENUMBERDATAX       =
+*   SALESDATA                  =
+*   SALESDATAX                 =
+*   STORAGETYPEDATA            =
+*   STORAGETYPEDATAX           =
+*   FLAG_ONLINE                = ' '
+*   FLAG_CAD_CALL              = ' '
+*   NO_DEQUEUE                 = ' '
+*   NO_ROLLBACK_WORK           = ' '
+ IMPORTING
+   RETURN                     = LS_RETURN
+ TABLES
+   MATERIALDESCRIPTION        = LT_MATERIALDESCRIPTION
+*   UNITSOFMEASURE             =
+*   UNITSOFMEASUREX            =
+*   INTERNATIONALARTNOS        =
+*   MATERIALLONGTEXT           =
+*   TAXCLASSIFICATIONS         =
+*   RETURNMESSAGES             =
+*   PRTDATA                    =
+*   PRTDATAX                   =
+*   EXTENSIONIN                =
+*   EXTENSIONINX               =
+          .
+APPEND LS_RETURN TO LT_RETURN.
+CLEAR LS_RETURN.
+
+CLEAR : LS_MATERIALDESCRIPTION.
+
+ENDLOOP.
+
+CL_DEMO_OUTPUT=>DISPLAY( LT_RETURN ).
