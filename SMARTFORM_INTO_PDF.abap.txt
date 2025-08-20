@@ -25,7 +25,7 @@ START-OF-SELECTION.
 *     ARCHIVE_INDEX    =
 *     ARCHIVE_INDEX_TAB          =
 *     ARCHIVE_PARAMETERS         =
-*     CONTROL_PARAMETERS         =
+     CONTROL_PARAMETERS         = LS_CONTROL
 *     MAIL_APPL_OBJ    =
 *     MAIL_RECIPIENT   =
 *     MAIL_SENDER      =
@@ -128,4 +128,5 @@ START-OF-SELECTION.
       OTHERS                  = 22.
   IF SY-SUBRC <> 0.
 * Implement suitable error handling here
+
   ENDIF.
